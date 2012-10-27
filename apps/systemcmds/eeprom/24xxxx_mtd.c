@@ -378,7 +378,6 @@ static ssize_t at24c_bwrite(FAR struct mtd_dev_s *dev, off_t startblock, size_t 
 
 			perf_begin(priv->perf_writes);
 			ret = I2C_TRANSFER(priv->dev, &msgv[0], 1);
-			warnx("wrt: %d", ret);
 			perf_end(priv->perf_writes);
 
 			if (ret >= 0)
