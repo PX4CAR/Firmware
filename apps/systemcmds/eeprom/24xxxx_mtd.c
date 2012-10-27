@@ -446,7 +446,6 @@ static int at24c_ioctl(FAR struct mtd_dev_s *dev, int cmd, unsigned long arg)
 				if (CONFIG_AT24XX_MTD_BLOCKSIZE > priv->pagesize) {
 					geo->blocksize    = CONFIG_AT24XX_MTD_BLOCKSIZE;
 					geo->erasesize    = CONFIG_AT24XX_MTD_BLOCKSIZE;
-					if ()
 					geo->neraseblocks = (priv->pagesize * 1024 / 8) / CONFIG_AT24XX_MTD_BLOCKSIZE;
 				} else {
 					geo->blocksize    = priv->pagesize;
