@@ -212,6 +212,7 @@ eeprom_baseboard_start(void)
 	ret = nxffs_initialize(eeprom_baseboard);
 
 	if (ret < 0)
+		warn("NXFFS error");
 		errx(1, "failed to initialize NXFFS - erase EEPROM to reformat");
 
 	/* mount the EEPROM */

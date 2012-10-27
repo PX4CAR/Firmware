@@ -118,7 +118,7 @@
 
 #ifndef CONFIG_AT24XX_MTD_BLOCKSIZE
 #  warning "Assuming driver block size is the same as the FLASH page size"
-#  define CONFIG_AT24XX_MTD_BLOCKSIZE 128
+#  define CONFIG_AT24XX_MTD_BLOCKSIZE 256
 #endif
 
 /* The AT24 does not respond on the bus during write cycles, so we depend on a long
@@ -192,12 +192,24 @@ static int at24c_eraseall(FAR struct at24c_dev_s *priv)
 		}
 	};
 
-	memset(&buf[2], 0xff, priv->pagesize);
+	/* reset whole buffer */
+	memset(&buf[0], 0xff, sizeof(buf));
+
+	/* set size of packet */
+	if (priv->pagesize * priv->npages > 256) {
+		msgv[0].length = priv->pagesize + 2;
+	} else {
+		msgv[0].length = priv->pagesize + 1;
+	}
 
 	for (startblock = 0; startblock < priv->npages; startblock++) {
 		uint16_t offset = startblock * priv->pagesize;
-		buf[1] = offset & 0xff;
-		buf[0] = (offset >> 8) & 0xff;
+		if (priv->pagesize * priv->npages > 256) {
+			buf[1] = offset & 0xff;
+			buf[0] = (offset >> 8) & 0xff;
+		} else {
+			buf[0] = offset;
+		}
 
 		while (I2C_TRANSFER(priv->dev, &msgv[0], 1) < 0) {
 			fvdbg("erase stall\n");
@@ -266,8 +278,15 @@ static ssize_t at24c_bread(FAR struct mtd_dev_s *dev, off_t startblock,
 		uint16_t offset = startblock * priv->pagesize;
 		unsigned tries = CONFIG_AT24XX_WRITE_TIMEOUT_MS;
 
-		addr[1] = offset & 0xff;
-		addr[0] = (offset >> 8) & 0xff;
+		if (priv->pagesize * priv->npages > 256) {
+			addr[1] = offset & 0xff;
+			addr[0] = (offset >> 8) & 0xff;
+			msgv[0].length = sizeof(addr);
+		} else {
+			addr[0] = offset;
+			msgv[0].length = 1;
+		}
+
 		msgv[1].buffer = buffer;
 
 		for (;;) {
@@ -359,6 +378,7 @@ static ssize_t at24c_bwrite(FAR struct mtd_dev_s *dev, off_t startblock, size_t 
 
 			perf_begin(priv->perf_writes);
 			ret = I2C_TRANSFER(priv->dev, &msgv[0], 1);
+			warnx("wrt: %d", ret);
 			perf_end(priv->perf_writes);
 
 			if (ret >= 0)
@@ -427,6 +447,7 @@ static int at24c_ioctl(FAR struct mtd_dev_s *dev, int cmd, unsigned long arg)
 				if (CONFIG_AT24XX_MTD_BLOCKSIZE > priv->pagesize) {
 					geo->blocksize    = CONFIG_AT24XX_MTD_BLOCKSIZE;
 					geo->erasesize    = CONFIG_AT24XX_MTD_BLOCKSIZE;
+					if ()
 					geo->neraseblocks = (priv->pagesize * 1024 / 8) / CONFIG_AT24XX_MTD_BLOCKSIZE;
 				} else {
 					geo->blocksize    = priv->pagesize;
@@ -485,7 +506,7 @@ FAR struct mtd_dev_s *at24c_initialize_ext(FAR struct i2c_dev_s *dev, unsigned c
 	 * to be extended to handle multiple FLASH parts on the same I2C bus.
 	 */
 
-	priv = &g_at24c[g_at24c_count++];
+	priv = &g_at24c[g_at24c_count];
 
 	if (priv) {
 		/* Initialize the allocated structure */
@@ -506,6 +527,47 @@ FAR struct mtd_dev_s *at24c_initialize_ext(FAR struct i2c_dev_s *dev, unsigned c
 		priv->perf_read_retries = perf_alloc(PC_COUNT, "EEPROM read retries");
 		priv->perf_read_errors = perf_alloc(PC_COUNT, "EEPROM read errors");
 		priv->perf_write_errors = perf_alloc(PC_COUNT, "EEPROM write errors");
+	}
+
+	/* attempt to read to validate device is present */
+	unsigned char buf[5];
+	uint8_t addrbuf[2] = {0, 0};
+
+	struct i2c_msg_s msgv[2] = {
+		{
+			.addr = priv->addr,
+			.flags = 0,
+			.buffer = &addrbuf[0],
+			.length = 0, /* is set a few lines down based on addr size */
+		},
+		{
+			.addr = priv->addr,
+			.flags = I2C_M_READ,
+			.buffer = &buf[0],
+			.length = sizeof(buf),
+		}
+	};
+
+	/* set address and address size based on device size */
+	unsigned int offset = 0;
+	if (priv->pagesize * priv->npages > 256) {
+		addrbuf[1] = offset & 0xff;
+		addrbuf[0] = (offset >> 8) & 0xff;
+		msgv[0].length = sizeof(addr);
+	} else {
+		addrbuf[0] = offset;
+		msgv[0].length = 1;
+	}
+
+	perf_begin(priv->perf_reads);
+	int ret = I2C_TRANSFER(priv->dev, &msgv[0], 2);
+	perf_end(priv->perf_reads);
+
+	if (ret < 0) {
+		return NULL;
+	} else {
+		/* valid device, increase count */
+		g_at24c_count++;
 	}
 
 	/* Return the implementation-specific state structure as the MTD device */

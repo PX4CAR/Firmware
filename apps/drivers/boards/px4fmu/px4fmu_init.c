@@ -245,12 +245,6 @@ __EXPORT int nsh_archinitialize(void)
 	/* set I2C3 speed */
 	I2C_SETFREQUENCY(i2c3, 400000);
 
-	/* try to attach, don't fail if device is not responding */
-	(void)eeprom_attach(i2c3, FMU_BASEBOARD_EEPROM_ADDRESS,
-			    FMU_BASEBOARD_EEPROM_TOTAL_SIZE_BYTES,
-			    FMU_BASEBOARD_EEPROM_PAGE_SIZE_BYTES,
-			    FMU_BASEBOARD_EEPROM_PAGE_WRITE_TIME_US, "/dev/baseboard_eeprom", 1);
-
 #if defined(CONFIG_STM32_SPI3)
 	/* Get the SPI port */
 

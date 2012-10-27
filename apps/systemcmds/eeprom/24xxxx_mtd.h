@@ -51,18 +51,6 @@
  ************************************************************************************/
 
 #include <nuttx/config.h>
-
-// #include <sys/types.h>
-// #include <stdint.h>
-// #include <stdbool.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-// #include <string.h>
-// #include <errno.h>
-// #include <debug.h>
-
-// #include <nuttx/kmalloc.h>
-// #include <nuttx/fs/ioctl.h>
 #include <nuttx/i2c.h>
 #include <nuttx/mtd.h>
 
