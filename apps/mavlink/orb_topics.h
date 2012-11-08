@@ -41,6 +41,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_combined.h>
+#include <uORB/topics/wheel_speeds.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_gps_position.h>
@@ -57,9 +58,12 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/debug_key_value.h>
+#include <uORB/topics/manual_control.h>
+#include <uORB/topics/controller.h>
 #include <drivers/drv_rc_input.h>
 
 struct mavlink_subscriptions {
+    int wheel_speeds_sub;
 	int sensor_sub;
 	int att_sub;
 	int global_pos_sub;

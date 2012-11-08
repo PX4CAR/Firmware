@@ -49,7 +49,7 @@
 #include <mqueue.h>
 #include <string.h>
 #include "mavlink_bridge_header.h"
-#include <v1.0/common/mavlink.h>
+#include <v1.0/car/mavlink.h>
 #include <drivers/drv_hrt.h>
 #include <time.h>
 #include <float.h>
@@ -273,7 +273,11 @@ static int set_mavlink_interval_limit(struct mavlink_subscriptions *subs, int ma
 	int ret = OK;
 
 	switch (mavlink_msg_id) {
-		case MAVLINK_MSG_ID_SCALED_IMU:
+        case MAVLINK_MSG_ID_WHEEL_SPEEDS:
+			/* sensor sub triggers scaled IMU */
+			orb_set_interval(subs->wheel_speeds_sub, min_interval);
+			break;
+        case MAVLINK_MSG_ID_SCALED_IMU:
 			/* sensor sub triggers scaled IMU */
 			orb_set_interval(subs->sensor_sub, min_interval);
 			break;
@@ -590,14 +594,15 @@ int mavlink_thread_main(int argc, char *argv[])
 		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_MANUAL_CONTROL, 100);
 	} else if (baudrate >= 115200) {
 		/* 20 Hz / 50 ms */
+        set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_WHEEL_SPEEDS, 50);
 		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_HIGHRES_IMU, 50);
 		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_RAW_IMU, 50);
-		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_ATTITUDE, 50);
-		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_NAMED_VALUE_FLOAT, 50);
+		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_ATTITUDE, 1000);
+		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_NAMED_VALUE_FLOAT, 1000);
 		/* 5 Hz / 100 ms */
-		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_SERVO_OUTPUT_RAW, 200);
+		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_SERVO_OUTPUT_RAW, 2000);
 		/* 2 Hz */
-		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_MANUAL_CONTROL, 500);
+		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_MANUAL_CONTROL, 5000);
 	} else if (baudrate >= 57600) {
 		/* 10 Hz / 100 ms */
 		set_mavlink_interval_limit(&mavlink_subs, MAVLINK_MSG_ID_RAW_IMU, 300);

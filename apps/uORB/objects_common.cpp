@@ -62,6 +62,15 @@ ORB_DEFINE(input_rc, struct rc_input_values);
 #include "topics/vehicle_attitude.h"
 ORB_DEFINE(vehicle_attitude, struct vehicle_attitude_s);
 
+#include "topics/wheel_speeds.h"
+ORB_DEFINE(wheel_speeds, struct wheel_speeds_s);
+
+#include "topics/manual_control.h"
+ORB_DEFINE(manual_control, struct manual_control_s);
+
+#include "topics/controller.h"
+ORB_DEFINE(controller, struct controller_s);
+
 #include "topics/sensor_combined.h"
 ORB_DEFINE(sensor_combined, struct sensor_combined_s);
 

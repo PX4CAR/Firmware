@@ -48,7 +48,7 @@
 #include <mqueue.h>
 #include <string.h>
 #include "mavlink_bridge_header.h"
-#include <v1.0/common/mavlink.h>
+#include <v1.0/car/mavlink.h>
 #include <drivers/drv_hrt.h>
 #include <time.h>
 #include <float.h>
@@ -98,6 +98,8 @@ extern bool gcs_link;
 static void
 handle_message(mavlink_message_t *msg)
 {
+    
+    
 	if (msg->msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
 
 		mavlink_command_long_t cmd_mavlink;
@@ -331,6 +333,44 @@ handle_message(mavlink_message_t *msg)
 			// }
 		}
 	}
+    
+    if (msg->msgid == MAVLINK_MSG_ID_MANUAL_CONTROL)
+    {
+        mavlink_manual_control_t man;
+        mavlink_msg_manual_control_decode(msg, &man);
+        
+        struct manual_control_s manual_control;
+        memset(&manual_control, 0, sizeof(manual_control));
+        static orb_advert_t man_pub = 0;
+        
+        manual_control.timestamp = hrt_absolute_time();
+        manual_control.motor = man.x;
+        manual_control.steering = man.y;
+        
+        if (man_pub == 0) {
+            man_pub = orb_advertise(ORB_ID(manual_control), &manual_control);
+        } else {
+            orb_publish(ORB_ID(manual_control), man_pub, &manual_control);
+        }
+    }
+    
+    if (msg->msgid == MAVLINK_MSG_ID_CONTROLLER)
+    {
+        mavlink_controller_t ctrl;
+        mavlink_msg_controller_decode(msg, &ctrl);
+        
+        struct controller_s ctrl_orb;
+        memset(&ctrl_orb, 0, sizeof(ctrl_orb));
+        static orb_advert_t ctrl_pub = 0;
+        
+        ctrl_orb.controller = ctrl.controller;
+        
+        if (ctrl_pub == 0) {
+            ctrl_pub = orb_advertise(ORB_ID(controller), &ctrl_orb);
+        } else {
+            orb_publish(ORB_ID(controller), ctrl_pub, &ctrl_orb);
+        }
+    }
 
 	/*
 	 * Only decode hil messages in HIL mode.
@@ -385,47 +425,6 @@ handle_message(mavlink_message_t *msg)
 			hil_attitude.counter++;
 			hil_attitude.timestamp = hrt_absolute_time();
 			orb_publish(ORB_ID(vehicle_attitude), pub_hil_attitude, &hil_attitude);
-		}
-
-		if (msg->msgid == MAVLINK_MSG_ID_MANUAL_CONTROL) {
-			mavlink_manual_control_t man;
-			mavlink_msg_manual_control_decode(msg, &man);
-
-			struct rc_channels_s rc_hil;
-			memset(&rc_hil, 0, sizeof(rc_hil));
-			static orb_advert_t rc_pub = 0;
-
-			rc_hil.timestamp = hrt_absolute_time();
-			rc_hil.chan_count = 4;
-
-			rc_hil.chan[0].scaled = man.x / 1000.0f;
-			rc_hil.chan[1].scaled = man.y / 1000.0f;
-			rc_hil.chan[2].scaled = man.r / 1000.0f;
-			rc_hil.chan[3].scaled = man.z / 1000.0f;
-
-			struct manual_control_setpoint_s mc;
-			static orb_advert_t mc_pub = 0;
-
-			mc.timestamp = rc_hil.timestamp;
-			mc.roll = man.x / 1000.0f;
-			mc.pitch = man.y / 1000.0f;
-			mc.yaw = man.r / 1000.0f;
-			mc.throttle = man.z / 1000.0f;
-
-			/* fake RC channels with manual control input from simulator */
-
-
-			if (rc_pub == 0) {
-				rc_pub = orb_advertise(ORB_ID(rc_channels), &rc_hil);
-			} else {
-				orb_publish(ORB_ID(rc_channels), rc_pub, &rc_hil);
-			}
-
-			if (mc_pub == 0) {
-				mc_pub = orb_advertise(ORB_ID(manual_control_setpoint), &mc);
-			} else {
-				orb_publish(ORB_ID(manual_control_setpoint), mc_pub, &mc);
-			}
 		}
 	}
 }

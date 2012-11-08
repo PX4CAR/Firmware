@@ -45,7 +45,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include "mavlink_bridge_header.h"
-#include <v1.0/common/mavlink.h>
+#include <v1.0/car/mavlink.h>
 #include <drivers/drv_hrt.h>
 #include <time.h>
 #include <float.h>
@@ -95,6 +95,7 @@ struct listener
 	uintptr_t	arg;
 };
 
+static void	l_wheel_speeds(struct listener *l);
 static void	l_sensor_combined(struct listener *l);
 static void	l_vehicle_attitude(struct listener *l);
 static void	l_vehicle_gps_position(struct listener *l);
@@ -113,6 +114,7 @@ static void	l_vehicle_attitude_controls(struct listener *l);
 static void	l_debug_key_value(struct listener *l);
 
 struct listener listeners[] = {
+    {l_wheel_speeds,		&mavlink_subs.wheel_speeds_sub,	0},
 	{l_sensor_combined,		&mavlink_subs.sensor_sub,	0},
 	{l_vehicle_attitude,		&mavlink_subs.att_sub,		0},
 	{l_vehicle_gps_position,	&mavlink_subs.gps_sub,		0},
@@ -135,6 +137,18 @@ struct listener listeners[] = {
 };
 
 static const unsigned n_listeners = sizeof(listeners) / sizeof(listeners[0]);
+
+void
+l_wheel_speeds(struct listener *l)
+{
+	struct wheel_speeds_s raw;
+    
+	/* copy sensors raw data into local buffer */
+	orb_copy(ORB_ID(wheel_speeds), mavlink_subs.wheel_speeds_sub, &raw);
+
+    mavlink_msg_wheel_speeds_send(MAVLINK_COMM_0, raw.speed_front_left, raw.speed_front_right, raw.speed_rear_left, raw.speed_rear_right);
+}
+
 
 void
 l_sensor_combined(struct listener *l)
@@ -573,6 +587,11 @@ uorb_receive_thread(void *arg)
 pthread_t
 uorb_receive_start(void)
 {
+    /* --- WHEEL SPEEDS --- */
+	mavlink_subs.wheel_speeds_sub = orb_subscribe(ORB_ID(wheel_speeds));
+	/* rate limit set externally based on interface speed, set a basic default here */
+	orb_set_interval(mavlink_subs.sensor_sub, 200);	/* 5Hz updates */
+    
 	/* --- SENSORS RAW VALUE --- */
 	mavlink_subs.sensor_sub = orb_subscribe(ORB_ID(sensor_combined));
 	/* rate limit set externally based on interface speed, set a basic default here */
